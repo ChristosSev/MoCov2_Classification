@@ -12,7 +12,7 @@ from lightly.models.utils import batch_shuffle
 from lightly.models.utils import batch_unshuffle
 
 num_workers = 8
-batch_size = 512
+batch_size = 256
 memory_bank_size = 4096
 seed = 1
 max_epochs = 500
