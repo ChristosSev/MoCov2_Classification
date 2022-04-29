@@ -12,10 +12,10 @@ from lightly.models.utils import batch_shuffle
 from lightly.models.utils import batch_unshuffle
 
 num_workers = 8
-batch_size = 32#512
-memory_bank_size = 256#4096
+batch_size = 512
+memory_bank_size = 4096
 seed = 1
-max_epochs = 5
+max_epochs = 500
 
 
 path_to_pretrain = '/home/christos_sevastopoulos/Desktop/Stanford dataset/xyma_LL'
@@ -24,14 +24,14 @@ path_to_test = '/home/christos_sevastopoulos/Desktop/TOY_DATASET/TESTING'
 
 
 
-# MoCo v2 uses SimCLR augmentations, additionally, disable blur
+
 collate_fn = lightly.data.SimCLRCollateFunction(
     input_size=32,
     gaussian_blur=0.,
 )
 
 
-# Augmentations typically used to train on cifar-10
+# Augmentations
 train_classifier_transforms = torchvision.transforms.Compose([
     torchvision.transforms.RandomCrop(32, padding=4),
     torchvision.transforms.RandomHorizontalFlip(),
@@ -233,7 +233,7 @@ class Classifier(pl.LightningModule):
 
 #train the model###
 
-# use a GPU if available
+
 gpus = 1 if torch.cuda.is_available() else 0
 
 model = MocoModel()
