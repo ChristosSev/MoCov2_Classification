@@ -4,7 +4,6 @@ import torchvision
 import pytorch_lightning as pl
 import copy
 import lightly
-
 from lightly.models.modules.heads import MoCoProjectionHead
 from lightly.models.utils import deactivate_requires_grad
 from lightly.models.utils import update_momentum
@@ -12,10 +11,10 @@ from lightly.models.utils import batch_shuffle
 from lightly.models.utils import batch_unshuffle
 
 num_workers = 8
-batch_size = 256
-memory_bank_size = 4096
+batch_size = 64#512
+memory_bank_size = 256#4096
 seed = 1
-max_epochs = 500
+max_epochs = 2
 
 
 path_to_pretrain = '/home/christos_sevastopoulos/Desktop/Stanford dataset/xyma_LL'
@@ -24,17 +23,21 @@ path_to_test = '/home/christos_sevastopoulos/Desktop/TOY_DATASET/TESTING'
 
 
 
-
+# MoCo v2 uses SimCLR augmentations, additionally, disable blur
 collate_fn = lightly.data.SimCLRCollateFunction(
     input_size=32,
     gaussian_blur=0.,
 )
 
 
-# Augmentations
+vlist = []
+
+
+# Augmentations typically used to train on the Stanford Dataset
 train_classifier_transforms = torchvision.transforms.Compose([
     torchvision.transforms.RandomCrop(32, padding=4),
     torchvision.transforms.RandomHorizontalFlip(),
+    #torchvision.transforms.Resize(128,128),
     torchvision.transforms.ToTensor(),
     torchvision.transforms.Normalize(
         mean=lightly.data.collate.imagenet_normalize['mean'],
@@ -44,7 +47,7 @@ train_classifier_transforms = torchvision.transforms.Compose([
 
 # No additional augmentations for the test set
 test_transforms = torchvision.transforms.Compose([
-    torchvision.transforms.Resize((32, 32)),
+    torchvision.transforms.Resize((128,128)),
     torchvision.transforms.ToTensor(),
     torchvision.transforms.Normalize(
         mean=lightly.data.collate.imagenet_normalize['mean'],
@@ -217,6 +220,7 @@ class Classifier(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         # calculate and log top1 accuracy
+
         if outputs:
             total_num = 0
             total_correct = 0
@@ -224,6 +228,9 @@ class Classifier(pl.LightningModule):
                 total_num += num
                 total_correct += correct
             acc = total_correct / total_num
+            vlist.append(acc)
+            vlist.sort()
+            print('the largest acc was', vlist[-1])
             self.log("val_acc", acc, on_epoch=True, prog_bar=True)
 
     def configure_optimizers(self):
@@ -233,7 +240,7 @@ class Classifier(pl.LightningModule):
 
 #train the model###
 
-
+# use a GPU if available
 gpus = 1 if torch.cuda.is_available() else 0
 
 model = MocoModel()
@@ -253,3 +260,28 @@ trainer.fit(
     dataloader_train_classifier,
     dataloader_test
 )
+
+
+# def confusion(prediction, truth):
+#     """ Returns the confusion matrix for the values in the `prediction` and `truth`
+#     tensors, i.e. the amount of positions where the values of `prediction`
+#     and `truth` are
+#     - 1 and 1 (True Positive)
+#     - 1 and 0 (False Positive)
+#     - 0 and 0 (True Negative)
+#     - 0 and 1 (False Negative)
+#     """
+#
+#     confusion_vector = prediction / truth
+#     true_positives = torch.sum(confusion_vector == 1).item()
+#     false_positives = torch.sum(confusion_vector == float('inf')).item()
+#     true_negatives = torch.sum(torch.isnan(confusion_vector)).item()
+#     false_negatives = torch.sum(confusion_vector == 0).item()
+#
+#     return true_positives, false_positives, true_negatives, false_negatives
+
+
+print(confusion(prediction, labels))
+
+cm = confusion_matrix(labels,prediction)
+print(cm)
